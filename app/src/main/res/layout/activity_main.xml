@@ -6,11 +6,25 @@
     android:orientation="vertical"
     tools:context=".MainActivity">
 
-    <Button
-        android:id="@+id/scanWifiButton"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Scan Wi-Fi" />
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/scanWifiButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Scan Wi-Fi" />
+
+        <Button
+            android:id="@+id/saveDataButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Save Data" />
+    </LinearLayout>
 
     <ListView
         android:id="@+id/wifiListView"

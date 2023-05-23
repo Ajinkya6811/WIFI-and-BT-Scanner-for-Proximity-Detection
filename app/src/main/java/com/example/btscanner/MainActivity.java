@@ -5,6 +5,7 @@ import android.content.pm.PackageManager;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
+import android.os.Environment;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
@@ -17,6 +18,12 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
@@ -52,6 +59,14 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 // Handle item click if needed
+            }
+        });
+
+        Button saveDataButton = findViewById(R.id.saveDataButton);
+        saveDataButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                saveDataToFile();
             }
         });
     }
@@ -97,4 +112,84 @@ public class MainActivity extends AppCompatActivity {
         }
         listAdapter.notifyDataSetChanged();
     }
+
+
+    private void saveDataToFile() {
+        // Get the data from the ListView
+        int itemCount = listAdapter.getCount();
+        if (itemCount == 0) {
+            Toast.makeText(this, "No data available to save", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        StringBuilder dataBuilder = new StringBuilder();
+
+        // Read existing data from the file, if it exists
+        try {
+            String customDirectoryName = "my_custom_directory";
+            String fileName = "data.txt";
+
+            File customDirectory = new File(getExternalFilesDir(null), customDirectoryName);
+            File file = new File(customDirectory, fileName);
+
+            if (file.exists()) {
+                FileReader fileReader = new FileReader(file);
+                BufferedReader bufferedReader = new BufferedReader(fileReader);
+
+                String line;
+                while ((line = bufferedReader.readLine()) != null) {
+                    dataBuilder.append(line).append("\n");
+                }
+
+                bufferedReader.close();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+            Toast.makeText(this, "Failed to read existing data", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Append new data to the StringBuilder
+        dataBuilder.append("data = [\n");
+
+        for (int i = 0; i < itemCount; i++) {
+            String item = listAdapter.getItem(i);
+            dataBuilder.append("    '").append(item).append("'");
+            if (i < itemCount - 1) {
+                dataBuilder.append(",");
+            }
+            dataBuilder.append("\n");
+        }
+
+        dataBuilder.append("]\n");
+
+        // Save data to file
+        try {
+            String customDirectoryName = "my_custom_directory";
+            String fileName = "data.txt";
+
+            File customDirectory = new File(getExternalFilesDir(null), customDirectoryName);
+
+            if (!customDirectory.exists()) {
+                if (!customDirectory.mkdirs()) {
+                    Toast.makeText(this, "Failed to create directory", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+            }
+
+            File file = new File(customDirectory, fileName);
+
+            FileWriter writer = new FileWriter(file, true); // Append to the file
+            writer.write(dataBuilder.toString());
+            writer.flush();
+            writer.close();
+
+            Toast.makeText(this, "Data saved to " + file.getAbsolutePath(), Toast.LENGTH_SHORT).show();
+        } catch (IOException e) {
+            e.printStackTrace();
+            Toast.makeText(this, "Failed to save data", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+
 }
