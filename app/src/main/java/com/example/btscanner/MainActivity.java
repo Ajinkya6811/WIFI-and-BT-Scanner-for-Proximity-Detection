@@ -24,7 +24,14 @@ import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -114,6 +121,105 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
+//    private void saveDataToFile() {
+//        // Get the data from the ListView
+//        int itemCount = listAdapter.getCount();
+//        if (itemCount == 0) {
+//            Toast.makeText(this, "No data available to save", Toast.LENGTH_SHORT).show();
+//            return;
+//        }
+//
+//        StringBuilder dataBuilder = new StringBuilder();
+//
+//        // Read existing data from the file, if it exists
+//        try {
+//            String customDirectoryName = "my_custom_directory";
+//            String fileName = "data.txt";
+//
+//            File customDirectory = new File(getExternalFilesDir(null), customDirectoryName);
+//            File file = new File(customDirectory, fileName);
+//
+//            if (file.exists()) {
+//                FileReader fileReader = new FileReader(file);
+//                BufferedReader bufferedReader = new BufferedReader(fileReader);
+//
+//                String line;
+//                while ((line = bufferedReader.readLine()) != null) {
+//                    dataBuilder.append(line).append("\n");
+//                }
+//
+//                bufferedReader.close();
+//            }
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//            Toast.makeText(this, "Failed to read existing data", Toast.LENGTH_SHORT).show();
+//            return;
+//        }
+//
+//        // Append new data with timestamp to the StringBuilder
+//        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault());
+//        String timestamp = dateFormat.format(new Date());
+//
+//        dataBuilder.append("[\n");
+//
+//        for (int i = 0; i < itemCount; i++) {
+//            String item = listAdapter.getItem(i);
+//            String[] lines = item.split("\\n");
+//            StringBuilder ans = new StringBuilder();
+//
+//            // Extracting individual terms
+//            for (String line : lines) {
+//                String[] terms = line.split(":\\s");
+//                if (terms.length == 2) {
+//                    String key = terms[0].trim();
+//                    String value = terms[1].trim();
+//                    ans.append("'").append(key).append("'").append(":").append("'").append(value).append("',");
+//                }
+//            }
+//
+//
+//            dataBuilder.append("[\n")
+//                    .append("    'wifi'= {")
+//                    .append(ans).append(" 'timestamp': '")
+//                    .append(timestamp).append("'},\n")
+//                    .append("    'bt'= {}\n")
+//                    .append("]");
+//            if (i < itemCount - 1) {
+//                dataBuilder.append(",");
+//            }
+//            dataBuilder.append("\n");
+//        }
+//
+//        dataBuilder.append("]\n");
+//
+//        // Save data to file
+//        try {
+//            String customDirectoryName = "my_custom_directory";
+//            String fileName = "data.txt";
+//
+//            File customDirectory = new File(getExternalFilesDir(null), customDirectoryName);
+//
+//            if (!customDirectory.exists()) {
+//                if (!customDirectory.mkdirs()) {
+//                    Toast.makeText(this, "Failed to create directory", Toast.LENGTH_SHORT).show();
+//                    return;
+//                }
+//            }
+//
+//            File file = new File(customDirectory, fileName);
+//
+//            FileWriter writer = new FileWriter(file, true); // Append to the file
+//            writer.write(dataBuilder.toString());
+//            writer.flush();
+//            writer.close();
+//
+//            Toast.makeText(this, "Data saved to " + file.getAbsolutePath(), Toast.LENGTH_SHORT).show();
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//            Toast.makeText(this, "Failed to save data", Toast.LENGTH_SHORT).show();
+//        }
+//    }
+
     private void saveDataToFile() {
         // Get the data from the ListView
         int itemCount = listAdapter.getCount();
@@ -122,9 +228,8 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        StringBuilder dataBuilder = new StringBuilder();
-
         // Read existing data from the file, if it exists
+        List<String> existingData = new ArrayList<>();
         try {
             String customDirectoryName = "my_custom_directory";
             String fileName = "data.txt";
@@ -138,7 +243,7 @@ public class MainActivity extends AppCompatActivity {
 
                 String line;
                 while ((line = bufferedReader.readLine()) != null) {
-                    dataBuilder.append(line).append("\n");
+                    existingData.add(line);
                 }
 
                 bufferedReader.close();
@@ -149,19 +254,32 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        // Append new data to the StringBuilder
-        dataBuilder.append("data = [\n");
+        // Append new data with timestamp to the existing data
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault());
+        String timestamp = dateFormat.format(new Date());
 
         for (int i = 0; i < itemCount; i++) {
             String item = listAdapter.getItem(i);
-            dataBuilder.append("    '").append(item).append("'");
-            if (i < itemCount - 1) {
-                dataBuilder.append(",");
-            }
-            dataBuilder.append("\n");
-        }
+            String[] lines = item.split("\\n");
+            StringBuilder ans = new StringBuilder();
 
-        dataBuilder.append("]\n");
+            // Extract individual terms
+            for (String line : lines) {
+                String[] terms = line.split(":\\s");
+                if (terms.length == 2) {
+                    String key = terms[0].trim();
+                    String value = terms[1].trim();
+                    ans.append("'").append(key).append("'").append(":").append("'").append(value).append("',");
+                }
+            }
+
+            existingData.add("[");
+            existingData.add("    'wifi' = {" + ans + " 'timestamp': '" + timestamp + "'},");
+            existingData.add("    'bt' = {}");
+            existingData.add("]");
+
+            existingData.add(""); // Add an empty line between entries
+        }
 
         // Save data to file
         try {
@@ -179,8 +297,10 @@ public class MainActivity extends AppCompatActivity {
 
             File file = new File(customDirectory, fileName);
 
-            FileWriter writer = new FileWriter(file, true); // Append to the file
-            writer.write(dataBuilder.toString());
+            FileWriter writer = new FileWriter(file);
+            for (String line : existingData) {
+                writer.write(line + "\n");
+            }
             writer.flush();
             writer.close();
 
