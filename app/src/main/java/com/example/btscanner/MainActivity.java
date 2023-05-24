@@ -17,6 +17,7 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ListView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -47,6 +48,10 @@ public class MainActivity extends AppCompatActivity {
     /////////////////////////////////////////////////////////////////////////
     private static final int REQUEST_PERMISSION_LOCATION = 5;
 
+    String observationText="";
+
+    private int observationNumber = 1;
+
 
     private static String[] PERMISSIONS_STORAGE = {
             Manifest.permission.READ_EXTERNAL_STORAGE,
@@ -70,7 +75,8 @@ public class MainActivity extends AppCompatActivity {
     private ListView BluetoothlistView;
     private ArrayList<BluetoothDeviceInfo> mDeviceList = new ArrayList<>();
     private BluetoothAdapter mBluetoothAdapter;
-    Button scanBTButton;
+    Button scanWifiButton;
+    TextView observationNumberTextView;
     /////////////////////////////////////////////////////////////////////////
 
     private WifiManager wifiManager;
@@ -85,6 +91,10 @@ public class MainActivity extends AppCompatActivity {
         /////////////////////////////////////////////////////////////////////////
 
         checkPermissions();
+        observationNumberTextView = findViewById(R.id.observationNumberTextView);
+        observationNumberTextView.setText("Observation Number: " + observationNumber);
+
+
         BluetoothlistView = (ListView) findViewById(R.id.bluetoothListView);
 
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
@@ -97,7 +107,7 @@ public class MainActivity extends AppCompatActivity {
 
         wifiManager = (WifiManager) getApplicationContext().getSystemService(WIFI_SERVICE);
 
-        Button scanWifiButton = findViewById(R.id.scanWifiButton);
+        scanWifiButton = findViewById(R.id.scanWifiButton);
         scanWifiButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -108,13 +118,6 @@ public class MainActivity extends AppCompatActivity {
         });
 
         /////////////////////////////////////////////////////////////////////////////////
-        scanBTButton = findViewById(R.id.scanBluetoothButton);
-        scanBTButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                startBluetoothScan();
-            }
-        });
 
 
         /////////////////////////////////////////////////////////////////////////////////
@@ -203,11 +206,11 @@ public class MainActivity extends AppCompatActivity {
                 BluetoothlistView.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_list_item_1, mDeviceList));
             } else if (BluetoothAdapter.ACTION_DISCOVERY_STARTED.equals(action)) {
                 // Discovery started
-                scanBTButton.setEnabled(false);
+                scanWifiButton.setEnabled(false);
                 Toast.makeText(context, "Scanning for Bluetooth devices...", Toast.LENGTH_SHORT).show();
             } else if (BluetoothAdapter.ACTION_DISCOVERY_FINISHED.equals(action)) {
                 // Discovery finished
-                scanBTButton.setEnabled(true);
+                scanWifiButton.setEnabled(true);
                 Toast.makeText(context, "Bluetooth scan finished", Toast.LENGTH_SHORT).show();
             }
         }
@@ -257,16 +260,19 @@ public class MainActivity extends AppCompatActivity {
             Toast.makeText(this, "Enabling Wi-Fi...", Toast.LENGTH_SHORT).show();
         }
 
-        wifiManager.startScan();
         listAdapter.clear();
+        wifiListView.setAdapter(null);
+        wifiManager.startScan();
+
         List<ScanResult> scanResults = wifiManager.getScanResults();
         for (ScanResult scanResult : scanResults) {
             String result = "SSID: " + scanResult.SSID
-                    + "\nName: " + scanResult.BSSID
+                    + "\nMAC: " + scanResult.BSSID
                     + "\nSignal Strength: " + scanResult.level + "dBm"
                     + "\nFrequency: " + scanResult.frequency + "MHz";
             listAdapter.add(result);
         }
+        wifiListView.setAdapter(listAdapter);
         listAdapter.notifyDataSetChanged();
     }
 
@@ -350,11 +356,14 @@ public class MainActivity extends AppCompatActivity {
             newData.append("\n]");
         }
         newData.append("\n'timestamp' : '" + timestamp + "'");
+        newData.append("\n'observation No :'"+observationNumber);
 
         newData.append("\n]");
 
         // Add the new data to the existing data
         existingData.add(newData.toString());
+        observationNumber++;
+        observationNumberTextView.setText("Observation Number: " + observationNumber);
 
         // Save the updated data to the file
         try {

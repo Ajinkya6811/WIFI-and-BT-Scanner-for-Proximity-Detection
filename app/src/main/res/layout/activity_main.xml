@@ -16,7 +16,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="Scan Wi-Fi" />
+            android:text="Scan" />
 
         <Button
             android:id="@+id/saveDataButton"
@@ -33,11 +33,17 @@
         android:layout_weight="1"
         android:scrollbars="vertical" />
 
-    <Button
-        android:id="@+id/scanBluetoothButton"
+
+    <TextView
+        android:id="@+id/observationNumberTextView"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Scan Bluetooth" />
+        android:layout_below="@id/wifiListView"
+        android:layout_centerHorizontal="true"
+        android:textAlignment="center"
+        android:layout_marginTop="16dp"
+        android:text="Observation Number: 0"
+        android:gravity="center_horizontal" />
 
     <ListView
         android:id="@+id/bluetoothListView"
