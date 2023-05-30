@@ -12,6 +12,7 @@ import android.net.wifi.ScanResult;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
@@ -39,6 +40,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Timer;
+import java.util.TimerTask;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -48,7 +51,7 @@ public class MainActivity extends AppCompatActivity {
     /////////////////////////////////////////////////////////////////////////
     private static final int REQUEST_PERMISSION_LOCATION = 5;
 
-    String observationText="";
+    String observationText = "";
 
     private int observationNumber = 1;
 
@@ -76,6 +79,7 @@ public class MainActivity extends AppCompatActivity {
     private ArrayList<BluetoothDeviceInfo> mDeviceList = new ArrayList<>();
     private BluetoothAdapter mBluetoothAdapter;
     Button scanWifiButton;
+    Button scanBluetoothButton;
     TextView observationNumberTextView;
     /////////////////////////////////////////////////////////////////////////
 
@@ -111,23 +115,31 @@ public class MainActivity extends AppCompatActivity {
         scanWifiButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                checkWifiPermissions();
-                startBluetoothScan();
-
+                startWifiScan();
             }
         });
 
-        /////////////////////////////////////////////////////////////////////////////////
+        scanBluetoothButton=findViewById(R.id.scanBluetoothButton);
+
+        scanBluetoothButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                startBluetoothScan();
+            }
+        });
 
 
         /////////////////////////////////////////////////////////////////////////////////
 
+
+        /////////////////////////////////////////////////////////////////////////////////
 
 
         Button saveDataButton = findViewById(R.id.saveDataButton);
         saveDataButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                mBluetoothAdapter.cancelDiscovery();
                 saveDataToFile();
             }
         });
@@ -140,11 +152,10 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-
     ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-    private void checkPermissions(){
+    private void checkPermissions() {
         int permission1 = ActivityCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE);
         int permission2 = ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN);
         if (permission1 != PackageManager.PERMISSION_GRANTED) {
@@ -154,7 +165,7 @@ public class MainActivity extends AppCompatActivity {
                     PERMISSIONS_STORAGE,
                     1
             );
-        } else if (permission2 != PackageManager.PERMISSION_GRANTED){
+        } else if (permission2 != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(
                     this,
                     PERMISSIONS_LOCATION,
@@ -166,6 +177,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         unregisterReceiver(mReceiver);
+        unregisterReceiver(wifiScanReceiver);
         super.onDestroy();
     }
 
@@ -186,6 +198,7 @@ public class MainActivity extends AppCompatActivity {
 
     private final BroadcastReceiver mReceiver = new BroadcastReceiver() {
         public void onReceive(Context context, Intent intent) {
+//            unregisterReceiver(this);
             String action = intent.getAction();
             if (BluetoothDevice.ACTION_FOUND.equals(action)) {
                 // Device found
@@ -206,11 +219,11 @@ public class MainActivity extends AppCompatActivity {
                 BluetoothlistView.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_list_item_1, mDeviceList));
             } else if (BluetoothAdapter.ACTION_DISCOVERY_STARTED.equals(action)) {
                 // Discovery started
-                scanWifiButton.setEnabled(false);
+                scanBluetoothButton.setEnabled(false);
                 Toast.makeText(context, "Scanning for Bluetooth devices...", Toast.LENGTH_SHORT).show();
             } else if (BluetoothAdapter.ACTION_DISCOVERY_FINISHED.equals(action)) {
                 // Discovery finished
-                scanWifiButton.setEnabled(true);
+                scanBluetoothButton.setEnabled(true);
                 Toast.makeText(context, "Bluetooth scan finished", Toast.LENGTH_SHORT).show();
             }
         }
@@ -226,7 +239,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////
-
 
 
     private void checkWifiPermissions() {
@@ -260,21 +272,101 @@ public class MainActivity extends AppCompatActivity {
             Toast.makeText(this, "Enabling Wi-Fi...", Toast.LENGTH_SHORT).show();
         }
 
+        // Clear the list adapter before starting the scan
         listAdapter.clear();
         wifiListView.setAdapter(null);
-        wifiManager.startScan();
-
-        List<ScanResult> scanResults = wifiManager.getScanResults();
-        for (ScanResult scanResult : scanResults) {
-            String result = "SSID: " + scanResult.SSID
-                    + "\nMAC: " + scanResult.BSSID
-                    + "\nSignal Strength: " + scanResult.level + "dBm"
-                    + "\nFrequency: " + scanResult.frequency + "MHz";
-            listAdapter.add(result);
-        }
-        wifiListView.setAdapter(listAdapter);
         listAdapter.notifyDataSetChanged();
+
+        // Register the BroadcastReceiver to listen for Wi-Fi scan results
+        registerReceiver(wifiScanReceiver, new IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION));
+
+
+                wifiManager.startScan();
+
+
     }
+
+    // BroadcastReceiver to handle Wi-Fi scan results
+    private final BroadcastReceiver wifiScanReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            // Unregister the BroadcastReceiver as the scan is complete
+            unregisterReceiver(this);
+
+            // Get the scan results
+                List<ScanResult> scanResults = wifiManager.getScanResults();
+
+            // Add the scan results to the list adapter
+            for (ScanResult scanResult : scanResults) {
+                String result = "SSID: " + scanResult.SSID
+                        + "\nMAC: " + scanResult.BSSID
+                        + "\nSignal Strength: " + scanResult.level + "dBm"
+                        + "\nFrequency: " + scanResult.frequency + "MHz";
+                listAdapter.add(result);
+            }
+
+            // Set the updated list adapter to the ListView
+            wifiListView.setAdapter(listAdapter);
+            listAdapter.notifyDataSetChanged();
+
+            // Enable the scanWifiButton after the scan is complete
+            scanWifiButton.setEnabled(true);
+        }
+    };
+
+//
+//
+//    private void startWifiScan() {
+//        if (wifiManager == null) {
+//            Toast.makeText(this, "Wi-Fi is not supported on this device", Toast.LENGTH_SHORT).show();
+//            return;
+//        }
+//
+//        if (!wifiManager.isWifiEnabled()) {
+//            wifiManager.setWifiEnabled(true);
+//            Toast.makeText(this, "Enabling Wi-Fi...", Toast.LENGTH_SHORT).show();
+//        }
+//        listAdapter.clear();
+//        wifiListView.setAdapter(null);
+//        wifiManager.startScan();
+//
+//
+//        // Delay for 5 seconds
+//        Handler handler = new Handler();
+//        handler.postDelayed(new Runnable() {
+//            @Override
+//            public void run() {
+//                // Get the scan results
+//                List<ScanResult> scanResults = wifiManager.getScanResults();
+//
+//                // Add the scan results to the list adapter
+//                for (ScanResult scanResult : scanResults) {
+//                    String result = "SSID: " + scanResult.SSID
+//                            + "\nMAC: " + scanResult.BSSID
+//                            + "\nSignal Strength: " + scanResult.level + "dBm"
+//                            + "\nFrequency: " + scanResult.frequency + "MHz";
+//                    listAdapter.add(result);
+//                }
+//
+//                // Set the updated list adapter to the ListView
+//                wifiListView.setAdapter(listAdapter);
+//                listAdapter.notifyDataSetChanged();
+//            }
+//        }, 5000); // 5000 milliseconds = 5 seconds
+//    }
+
+
+//        List<ScanResult> scanResults = wifiManager.getScanResults();
+//        for (ScanResult scanResult : scanResults) {
+//            String result = "SSID: " + scanResult.SSID
+//                    + "\nMAC: " + scanResult.BSSID
+//                    + "\nSignal Strength: " + scanResult.level + "dBm"
+//                    + "\nFrequency: " + scanResult.frequency + "MHz";
+//            listAdapter.add(result);
+//        }
+//        wifiListView.setAdapter(listAdapter);
+//        listAdapter.notifyDataSetChanged();
+//    }
 
 
 
@@ -318,7 +410,7 @@ public class MainActivity extends AppCompatActivity {
         String timestamp = dateFormat.format(new Date());
 
         StringBuilder newData = new StringBuilder();
-        newData.append("[");
+        newData.append("{");
         if (itemCount > 0) {
             // Wi-Fi data
             newData.append("\n'wifi' : [");
@@ -353,12 +445,12 @@ public class MainActivity extends AppCompatActivity {
                 newData.append("\n'rssi' : '" + deviceInfo.getRssi() + "',");
                 newData.append("\n},");
             }
-            newData.append("\n]");
+            newData.append("\n],");
         }
         newData.append("\n'timestamp' : '" + timestamp + "'");
-        newData.append("\n'observation No :'"+observationNumber);
+        newData.append("\n,'observation No' :" + observationNumber);
 
-        newData.append("\n]");
+        newData.append("\n},");
 
         // Add the new data to the existing data
         existingData.add(newData.toString());
@@ -388,99 +480,5 @@ public class MainActivity extends AppCompatActivity {
             Toast.makeText(this, "Failed to save data", Toast.LENGTH_SHORT).show();
         }
     }
-
-
-
-//    private void saveDataToFile() {
-//        // Get the data from the ListView
-//        int itemCount = listAdapter.getCount();
-//        if (itemCount == 0) {
-//            Toast.makeText(this, "No data available to save", Toast.LENGTH_SHORT).show();
-//            return;
-//        }
-//
-//        // Read existing data from the file, if it exists
-//        List<String> existingData = new ArrayList<>();
-//        try {
-//            String customDirectoryName = "my_custom_directory";
-//            String fileName = "data.txt";
-//
-//            File customDirectory = new File(getExternalFilesDir(null), customDirectoryName);
-//            File file = new File(customDirectory, fileName);
-//
-//            if (file.exists()) {
-//                FileReader fileReader = new FileReader(file);
-//                BufferedReader bufferedReader = new BufferedReader(fileReader);
-//
-//                String line;
-//                while ((line = bufferedReader.readLine()) != null) {
-//                    existingData.add(line);
-//                }
-//
-//                bufferedReader.close();
-//            }
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//            Toast.makeText(this, "Failed to read existing data", Toast.LENGTH_SHORT).show();
-//            return;
-//        }
-//
-//        // Append new data with timestamp to the existing data
-//        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault());
-//        String timestamp = dateFormat.format(new Date());
-//
-//        for (int i = 0; i < itemCount; i++) {
-//            String item = listAdapter.getItem(i);
-//            String[] lines = item.split("\\n");
-//            StringBuilder ans = new StringBuilder();
-//
-//            // Extract individual terms
-//            for (String line : lines) {
-//                String[] terms = line.split(":\\s");
-//                if (terms.length == 2) {
-//                    String key = terms[0].trim();
-//                    String value = terms[1].trim();
-//                    ans.append("'").append(key).append("'").append(":").append("'").append(value).append("',");
-//                }
-//            }
-//
-//            existingData.add("[");
-//            existingData.add("    'wifi' = {" + ans + " 'timestamp': '" + timestamp + "'},");
-//            existingData.add("    'bt' = {}");
-//            existingData.add("]");
-//
-//            existingData.add(""); // Add an empty line between entries
-//        }
-//
-//        // Save data to file
-//        try {
-//            String customDirectoryName = "my_custom_directory";
-//            String fileName = "data.txt";
-//
-//            File customDirectory = new File(getExternalFilesDir(null), customDirectoryName);
-//
-//            if (!customDirectory.exists()) {
-//                if (!customDirectory.mkdirs()) {
-//                    Toast.makeText(this, "Failed to create directory", Toast.LENGTH_SHORT).show();
-//                    return;
-//                }
-//            }
-//
-//            File file = new File(customDirectory, fileName);
-//
-//            FileWriter writer = new FileWriter(file);
-//            for (String line : existingData) {
-//                writer.write(line + "\n");
-//            }
-//            writer.flush();
-//            writer.close();
-//
-//            Toast.makeText(this, "Data saved to " + file.getAbsolutePath(), Toast.LENGTH_SHORT).show();
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//            Toast.makeText(this, "Failed to save data", Toast.LENGTH_SHORT).show();
-//        }
-//    }
-
 
 }

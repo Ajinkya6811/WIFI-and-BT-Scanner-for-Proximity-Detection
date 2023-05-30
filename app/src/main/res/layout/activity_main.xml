@@ -16,7 +16,14 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="Scan" />
+            android:text="Scan WiFi" />
+
+        <Button
+            android:id="@+id/scanBluetoothButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Scan BT" />
 
         <Button
             android:id="@+id/saveDataButton"
